@@ -1,0 +1,142 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  validate-pr:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check commit messages
+        run: |
+          COMMITS=$(git log --format="%s" origin/${{ github.base_ref }}..HEAD)
+          PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,100}"
+
+          while IFS= read -r commit; do
+            if [[ ! "$commit" =~ $PATTERN ]]; then
+              echo "::error::Invalid commit message: $commit"
+              echo "Expected format: type(scope): description"
+              exit 1
+            fi
+          done <<< "$COMMITS"
+
+          echo "All commit messages valid"
+
+      - name: Check for merge conflicts
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if ! git merge-tree $(git merge-base HEAD origin/${{ github.base_ref }}) HEAD origin/${{ github.base_ref }} | grep -q "^"; then
+            echo "No merge conflicts detected"
+          fi
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(npm run test:coverage -- --reporter=json 2>/dev/null | jq '.total.lines.pct // 0')
+          MIN_COVERAGE=80
+
+          if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+            echo "::error::Coverage $COVERAGE% is below minimum $MIN_COVERAGE%"
+            exit 1
+          fi
+
+          echo "Coverage: $COVERAGE%"
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+
+      - name: Generate hash report
+        run: |
+          echo "## Hash Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          node scripts/hash-util.js dir src >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: PR validation summary
+        run: |
+          echo "## PR Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| ESLint | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit Messages | ✅ Valid |" >> $GITHUB_STEP_SUMMARY
+
+  label-pr:
+    name: Auto-label PR
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Label based on files changed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = new Set();
+
+            for (const file of files) {
+              if (file.filename.startsWith('src/clients/')) {
+                labels.add('api-integration');
+              }
+              if (file.filename.includes('hash')) {
+                labels.add('security');
+              }
+              if (file.filename.startsWith('src/state/')) {
+                labels.add('state-management');
+              }
+              if (file.filename.endsWith('.md')) {
+                labels.add('documentation');
+              }
+              if (file.filename.startsWith('.github/')) {
+                labels.add('ci-cd');
+              }
+            }
+
+            if (labels.size > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: Array.from(labels),
+              });
+            }

@@ -1,0 +1,70 @@
+{
+  "name": "@blackroad/environments",
+  "version": "1.0.0",
+  "description": "BlackRoad OS Environments - Unified API integrations for Cloudflare, Salesforce, Vercel, Digital Ocean, Claude, GitHub Projects, and mobile app ecosystems",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "license": "PROPRIETARY",
+  "author": "BlackRoad OS, Inc. <blackroad.systems@gmail.com>",
+  "homepage": "https://blackroad.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackRoad-OS/blackroad-environments"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run lint && npm run typecheck && npm run test",
+    "validate:pr": "node scripts/validate-pr.js",
+    "hash": "node scripts/hash-util.js",
+    "sync:state": "node scripts/sync-state.js",
+    "prepublishOnly": "npm run validate && npm run build"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@octokit/rest": "^21.0.0",
+    "@octokit/graphql": "^8.0.0",
+    "@salesforce/core": "^8.0.0",
+    "jsforce": "^3.0.0",
+    "cloudflare": "^3.0.0",
+    "vercel": "^37.0.0",
+    "do-wrapper": "^5.0.0",
+    "axios": "^1.7.0",
+    "zod": "^3.23.0",
+    "dotenv": "^16.4.0",
+    "nanoid": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "tsup": "^8.3.0",
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "blackroad",
+    "api",
+    "cloudflare",
+    "salesforce",
+    "vercel",
+    "digital-ocean",
+    "claude",
+    "github-projects",
+    "crm",
+    "state-management",
+    "ios-apps"
+  ]
+}

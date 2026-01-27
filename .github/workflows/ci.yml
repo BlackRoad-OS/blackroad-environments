@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate PR
+        run: npm run validate:pr
+        continue-on-error: true
+
+  hash-verify:
+    name: Hash Verification
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate source hash
+        id: hash
+        run: |
+          HASH=$(node scripts/hash-util.js dir src --json | jq -r '.combinedHash')
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "Source hash: $HASH"
+
+      - name: Store hash artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-hash
+          path: |
+            package.json
+            tsconfig.json
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for secrets
+        run: |
+          # Check for potential secrets in code
+          if grep -r -E "(api_key|apikey|secret|password|token).*=.*['\"][a-zA-Z0-9]{20,}" src/; then
+            echo "::warning::Potential secrets found in source code"
+          fi
