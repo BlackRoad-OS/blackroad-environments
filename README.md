@@ -52,7 +52,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BlackRoad Proprietary License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 BlackRoad OS Ecosystem
 
@@ -78,3 +78,13 @@ This repository is part of the larger BlackRoad OS ecosystem:
 Made with 💜 by the BlackRoad OS community
 
 </div>
+
+---
+
+**Proprietary Software — BlackRoad OS, Inc.**
+
+This software is proprietary to BlackRoad OS, Inc. Source code is publicly visible for transparency and collaboration. Commercial use, forking, and redistribution are prohibited without written authorization.
+
+**BlackRoad OS — Pave Tomorrow.**
+
+*Copyright 2024-2026 BlackRoad OS, Inc. All Rights Reserved.*
